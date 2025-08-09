@@ -356,10 +356,15 @@ class Client
             )
         );
 
-        $data = json_decode((string)$response->getBody(), true);
-        $accountURL = $response->getHeaderLine('Location');
-        $date = (new \DateTime())->setTimestamp(strtotime($data['createdAt']));
-        return new Account($data['contact'], $date, ($data['status'] == 'valid'), $accountURL);
+    $data = json_decode((string)$response->getBody(), true);
+    $accountURL = $response->getHeaderLine('Location');
+    // Be resilient to missing keys in some ACME responses
+    $contact = isset($data['contact']) && is_array($data['contact']) ? $data['contact'] : [];
+    $createdAt = $data['createdAt'] ?? null;
+    $timestamp = $createdAt ? strtotime($createdAt) : false;
+    $date = $timestamp !== false ? (new \DateTime())->setTimestamp($timestamp) : new \DateTime();
+    $status = $data['status'] ?? 'valid';
+    return new Account($contact, $date, ($status == 'valid'), $accountURL);
     }
 
     /**
